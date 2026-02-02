@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote Vault - Private Voting Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    html, body, #app {
+      height: 100%;
+      width: 100%;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .animate-fade-in {
+      animation: fade-in 0.6s ease-out forwards;
+    }
+
+    .animate-pulse-soft {
+      animation: pulse-soft 2s ease-in-out infinite;
+    }
+
+    .animate-slide-up {
+      animation: slide-up 0.5s ease-out forwards;
+    }
+
+    .animate-spin-slow {
+      animation: spin-slow 3s linear infinite;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      opacity: 0;
+      transform: scale(0.98);
+      pointer-events: none;
+    }
+
+    .screen.active {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+      position: relative;
+    }
+
+    .safe-btn {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 28px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .safe-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .safe-btn:active {
+      transform: translateY(0);
+    }
+
+    .unsafe-btn {
+      background: transparent;
+      color: #3B82F6;
+      font-weight: 600;
+      border: 2px solid #3B82F6;
+      border-radius: 12px;
+      padding: 12px 26px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .unsafe-btn:hover {
+      background: rgba(59, 130, 246, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .card-player {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      border: 2px solid #E5E7EB;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .card-player:hover {
+      border-color: #3B82F6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+      transform: translateY(-4px);
+    }
+
+    .card-player.selected {
+      border-color: #3B82F6;
+      background: rgba(59, 130, 246, 0.05);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+    }
+
+    .privacy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(34, 197, 94, 0.1);
+      color: #16a34a;
+      padding: 8px 16px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-waiting {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3B82F6;
+    }
+
+    .status-correct {
+      background: rgba(34, 197, 94, 0.1);
+      color: #16a34a;
+    }
+
+    .status-wrong {
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    .player-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      font-size: 20px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #E5E7EB;
+      border-top-color: #3B82F6;
+      border-radius: 50%;
+      animation: spin-slow 1s linear infinite;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #E5E7EB, transparent);
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1F2937;
+      margin: 0;
+    }
+
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1F2937;
+      margin: 0;
+    }
+
+    .text-muted {
+      color: #6B7280;
+    }
+
+    .text-secondary {
+      color: #9CA3AF;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #F9FAFB;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9CA3AF;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-gradient-to-br from-slate-50 to-blue-50">
+  <div id="app" class="h-full w-full relative overflow-hidden"><!-- Screen: Landing -->
+   <div id="screen-landing" class="screen active h-full flex flex-col items-center justify-center px-6">
+    <div class="max-w-lg w-full animate-fade-in"><!-- Logo / Icon -->
+     <div class="text-center mb-8">
+      <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
+       <svg class="w-10 h-10 text-white" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+       </svg>
+      </div>
+      <h1 id="headline" class="mb-6">Vote Together. Stay Private.</h1>
+     </div><!-- Description -->
+     <p id="description" class="text-lg text-muted text-center mb-10 leading-relaxed">Everyone votes in secret. The system decides the result fairly.</p><!-- Privacy Info -->
+     <div class="card mb-8">
+      <div class="space-y-4">
+       <div class="flex items-start gap-3">
+        <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+         <svg class="w-4 h-4 text-blue-600" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+         </svg>
+        </div>
+        <div>
+         <p class="font-semibold text-gray-800 text-sm">Your vote is secret</p>
+         <p class="text-text-secondary text-sm">No one can see how you voted</p>
+        </div>
+       </div>
+       <div class="flex items-start gap-3">
+        <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+         <svg class="w-4 h-4 text-blue-600" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+         </svg>
+        </div>
+        <div>
+         <p class="font-semibold text-gray-800 text-sm">Fair results</p>
+         <p class="text-text-secondary text-sm">Everyone's vote counts equally</p>
+        </div>
+       </div>
+       <div class="flex items-start gap-3">
+        <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+         <svg class="w-4 h-4 text-blue-600" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+         </svg>
+        </div>
+        <div>
+         <p class="font-semibold text-gray-800 text-sm">Transparent outcome</p>
+         <p class="text-text-secondary text-sm">Only the final result is shown</p>
+        </div>
+       </div>
+      </div>
+     </div><!-- CTA Button --> <button onclick="goToScreen('lobby')" id="start-button" class="safe-btn w-full py-4 text-lg flex items-center justify-center gap-2">
+      <svg class="w-5 h-5" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /> <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg> Start Voting </button>
+    </div>
+   </div><!-- Screen: Lobby -->
+   <div id="screen-lobby" class="screen h-full flex flex-col overflow-hidden"><!-- Header -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4"><button onclick="goToScreen('landing')" class="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-2 mb-4 transition-colors">
+      <svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg> Back </button>
+     <h2>Players in Room</h2>
+    </div><!-- Content -->
+    <div class="flex-1 overflow-auto px-6 py-6">
+     <div class="max-w-2xl mx-auto"><!-- Players Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
+       <div class="card-player animate-fade-in">
+        <div class="player-avatar mx-auto mb-3">
+         👤
+        </div>
+        <p class="font-semibold text-gray-900 text-sm mb-1">You</p>
+        <p class="text-text-secondary text-xs">Ready</p>
+       </div>
+       <div class="card-player animate-fade-in" style="animation-delay: 0.1s">
+        <div class="player-avatar mx-auto mb-3">
+         🦊
+        </div>
+        <p class="font-semibold text-gray-900 text-sm mb-1">Player 2</p>
+        <p class="text-text-secondary text-xs">Ready</p>
+       </div>
+       <div class="card-player animate-fade-in" style="animation-delay: 0.2s">
+        <div class="player-avatar mx-auto mb-3">
+         🐺
+        </div>
+        <p class="font-semibold text-gray-900 text-sm mb-1">Player 3</p>
+        <p class="text-text-secondary text-xs">Ready</p>
+       </div>
+       <div class="card-player animate-fade-in" style="animation-delay: 0.3s">
+        <div class="player-avatar mx-auto mb-3">
+         🦉
+        </div>
+        <p class="font-semibold text-gray-900 text-sm mb-1">Player 4</p>
+        <p class="text-text-secondary text-xs">Ready</p>
+       </div>
+       <div class="card-player animate-fade-in" style="animation-delay: 0.4s">
+        <div class="player-avatar mx-auto mb-3">
+         🐱
+        </div>
+        <p class="font-semibold text-gray-900 text-sm mb-1">Player 5</p>
+        <p class="text-text-secondary text-xs">Ready</p>
+       </div>
+       <div class="card-player animate-fade-in" style="animation-delay: 0.5s">
+        <div class="player-avatar mx-auto mb-3">
+         🐻
+        </div>
+        <p class="font-semibold text-gray-900 text-sm mb-1">Player 6</p>
+        <p class="text-text-secondary text-xs">Ready</p>
+       </div>
+      </div><!-- Privacy Notice -->
+      <div class="card bg-green-50 border border-green-200 mb-8">
+       <div class="flex items-start gap-3">
+        <svg class="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        <div>
+         <h3 class="font-semibold text-green-900 mb-1">Your vote will be private</h3>
+         <p class="text-green-800 text-sm">Other players cannot see how you voted. Only the final result is shown to everyone.</p>
+        </div>
+       </div>
+      </div><!-- Game Info -->
+      <div class="space-y-2 mb-8">
+       <div class="flex justify-between items-center text-sm"><span class="text-text-secondary">Saboteur hidden:</span> <span class="font-semibold text-gray-900">Yes ✓</span>
+       </div>
+       <div class="flex justify-between items-center text-sm"><span class="text-text-secondary">All players ready:</span> <span class="font-semibold text-gray-900">Yes ✓</span>
+       </div>
+       <div class="flex justify-between items-center text-sm"><span class="text-text-secondary">Status:</span> <span class="font-semibold text-blue-600">Waiting to vote</span>
+       </div>
+      </div>
+     </div>
+    </div><!-- Footer -->
+    <div class="bg-white border-t border-gray-200 px-6 py-4"><button onclick="goToScreen('voting')" class="safe-btn w-full py-4 text-lg"> Start Vote </button>
+    </div>
+   </div><!-- Screen: Voting -->
+   <div id="screen-voting" class="screen h-full flex flex-col overflow-hidden"><!-- Header -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4">
+     <div class="flex items-center justify-between mb-4">
+      <h2 id="question-text">Who do you think is the Saboteur?</h2>
+      <div class="status-badge status-waiting">
+       <svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+       </svg> 60 sec
+      </div>
+     </div>
+     <p class="text-text-secondary text-sm">Click on a player to cast your private vote</p>
+    </div><!-- Content -->
+    <div class="flex-1 overflow-auto px-6 py-6">
+     <div class="max-w-3xl mx-auto"><!-- Privacy Info -->
+      <div class="privacy-badge mb-6 flex justify-center w-full">
+       <svg class="w-5 h-5" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+       </svg> Your choice is hidden and encrypted
+      </div><!-- Player Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="player-grid"><button class="card-player group animate-slide-up" onclick="selectPlayer(this)" style="animation-delay: 0s">
+        <div class="player-avatar mx-auto mb-3 group-hover:scale-110 transition-transform">
+         🦊
+        </div><p class="font-semibold text-gray-900 text-sm">Player 2</p><p class="text-text-secondary text-xs mt-1">Tap to vote</p></button> <button class="card-player group animate-slide-up" onclick="selectPlayer(this)" style="animation-delay: 0.1s">
+        <div class="player-avatar mx-auto mb-3 group-hover:scale-110 transition-transform">
+         🐺
+        </div><p class="font-semibold text-gray-900 text-sm">Player 3</p><p class="text-text-secondary text-xs mt-1">Tap to vote</p></button> <button class="card-player group animate-slide-up" onclick="selectPlayer(this)" style="animation-delay: 0.2s">
+        <div class="player-avatar mx-auto mb-3 group-hover:scale-110 transition-transform">
+         🦉
+        </div><p class="font-semibold text-gray-900 text-sm">Player 4</p><p class="text-text-secondary text-xs mt-1">Tap to vote</p></button> <button class="card-player group animate-slide-up" onclick="selectPlayer(this)" style="animation-delay: 0.3s">
+        <div class="player-avatar mx-auto mb-3 group-hover:scale-110 transition-transform">
+         🐱
+        </div><p class="font-semibold text-gray-900 text-sm">Player 5</p><p class="text-text-secondary text-xs mt-1">Tap to vote</p></button> <button class="card-player group animate-slide-up" onclick="selectPlayer(this)" style="animation-delay: 0.4s">
+        <div class="player-avatar mx-auto mb-3 group-hover:scale-110 transition-transform">
+         🐻
+        </div><p class="font-semibold text-gray-900 text-sm">Player 6</p><p class="text-text-secondary text-xs mt-1">Tap to vote</p></button> <button class="card-player group animate-slide-up" onclick="selectPlayer(this)" style="animation-delay: 0.5s">
+        <div class="player-avatar mx-auto mb-3 group-hover:scale-110 transition-transform">
+         🦝
+        </div><p class="font-semibold text-gray-900 text-sm">Player 7</p><p class="text-text-secondary text-xs mt-1">Tap to vote</p></button>
+      </div>
+      <div class="mt-8 text-center">
+       <p class="text-text-secondary text-sm">All votes are encrypted. No one can see your choice.</p>
+      </div>
+     </div>
+    </div><!-- Footer -->
+    <div class="bg-white border-t border-gray-200 px-6 py-4"><button onclick="goToScreen('processing')" id="vote-button" class="safe-btn w-full py-4 text-lg opacity-50 cursor-not-allowed" disabled> Cast My Vote </button>
+     <p class="text-center text-text-secondary text-xs mt-3">Select a player to vote</p>
+    </div>
+   </div><!-- Screen: Processing -->
+   <div id="screen-processing" class="screen h-full flex flex-col items-center justify-center px-6">
+    <div class="max-w-md w-full text-center animate-fade-in">
+     <div class="mb-8">
+      <div class="spinner mx-auto mb-6"></div>
+      <h2 class="mb-4">Votes Being Counted</h2>
+      <p class="text-text-secondary text-lg leading-relaxed">Votes are being counted privately. No individual vote will be revealed.</p>
+     </div>
+     <div class="card bg-blue-50 border border-blue-200">
+      <div class="flex items-center gap-2 justify-center mb-3">
+       <svg class="w-5 h-5 text-blue-600" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+       </svg><span class="text-sm font-semibold text-blue-900">Your vote is safe</span>
+      </div>
+      <p class="text-text-secondary text-sm">Being calculated using secure methods. This typically takes 15-30 seconds.</p>
+     </div>
+     <p class="text-text-secondary text-xs mt-8">Processing with Arcium privacy compute...</p>
+    </div>
+   </div><!-- Screen: Result -->
+   <div id="screen-result" class="screen h-full flex flex-col overflow-hidden"><!-- Header -->
+    <div class="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-4">
+     <h2>Vote Complete</h2>
+    </div><!-- Content -->
+    <div class="flex-1 overflow-auto px-6 py-6">
+     <div class="max-w-2xl mx-auto"><!-- Main Result -->
+      <div class="card mb-8 text-center">
+       <div class="mb-6">
+        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center mx-auto mb-4 text-4xl">
+         ✓
+        </div>
+        <h1 class="mb-2 text-3xl">Community Guess: Correct</h1>
+        <p class="text-text-secondary text-lg">The Saboteur was found!</p>
+       </div>
+      </div><!-- Who Was It -->
+      <div class="card mb-8">
+       <h3 class="font-semibold text-gray-900 mb-4 text-sm uppercase text-text-secondary tracking-wide">The Saboteur Was:</h3>
+       <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+        <div class="player-avatar">
+         🐺
+        </div>
+        <div class="text-left">
+         <p class="font-semibold text-gray-900">Player 3</p>
+         <p class="text-text-secondary text-sm">Eliminated</p>
+        </div>
+       </div>
+      </div><!-- Vote Results (No Individual Details) -->
+      <div class="card mb-8">
+       <h3 class="font-semibold text-gray-900 mb-4 text-sm uppercase text-text-secondary tracking-wide">Results Summary</h3>
+       <div class="space-y-3">
+        <div class="flex items-center justify-between"><span class="text-gray-700">Total Votes Cast:</span> <span class="font-semibold text-gray-900">6</span>
+        </div>
+        <div class="divider"></div>
+        <div class="flex items-center justify-between"><span class="text-gray-700">Votes for Player 3:</span> <span class="font-semibold text-green-600">4</span>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-gray-700">Consensus Strength:</span> <span class="font-semibold text-gray-900">67%</span>
+        </div>
+       </div>
+       <p class="text-text-secondary text-xs mt-4">Individual votes remain private. Only the outcome is visible.</p>
+      </div><!-- Private Feedback -->
+      <div class="card bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 mb-8">
+       <div class="flex items-start gap-3 mb-3">
+        <div class="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center flex-shrink-0">
+         <svg class="w-4 h-4 text-purple-700" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+         </svg>
+        </div>
+        <h3 class="font-semibold text-purple-900">Your Private Feedback</h3>
+       </div>
+       <div class="bg-white rounded-lg p-4 border border-purple-100 mb-3">
+        <p class="font-semibold text-gray-900 mb-1">Your vote was: Correct ✓</p>
+        <p class="text-text-secondary text-sm">You voted for Player 3, who was the Saboteur.</p>
+       </div>
+       <p class="text-purple-700 text-xs font-medium">Only you can see this feedback</p>
+      </div>
+     </div>
+    </div><!-- Footer -->
+    <div class="bg-white border-t border-gray-200 px-6 py-4 space-y-3"><button onclick="goToScreen('landing')" class="safe-btn w-full py-4 text-lg"> Play Again </button> <button class="unsafe-btn w-full py-3"> Share Results </button>
+    </div>
+   </div><!-- Screen: Wrong Result -->
+   <div id="screen-wrong-result" class="screen h-full flex flex-col overflow-hidden"><!-- Header -->
+    <div class="bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-4">
+     <h2>Vote Complete</h2>
+    </div><!-- Content -->
+    <div class="flex-1 overflow-auto px-6 py-6">
+     <div class="max-w-2xl mx-auto"><!-- Main Result -->
+      <div class="card mb-8 text-center">
+       <div class="mb-6">
+        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center mx-auto mb-4 text-4xl">
+         ✕
+        </div>
+        <h1 class="mb-2 text-3xl">Community Guess: Incorrect</h1>
+        <p class="text-text-secondary text-lg">The Saboteur escaped!</p>
+       </div>
+      </div><!-- Wrong Guess -->
+      <div class="card mb-8 border-2 border-red-200 bg-red-50">
+       <h3 class="font-semibold text-gray-900 mb-4 text-sm uppercase text-text-secondary tracking-wide">Community Voted For:</h3>
+       <div class="flex items-center gap-4 p-4 bg-white rounded-lg">
+        <div class="player-avatar">
+         🦊
+        </div>
+        <div class="text-left">
+         <p class="font-semibold text-gray-900">Player 2</p>
+         <p class="text-text-secondary text-sm">Was innocent</p>
+        </div>
+       </div>
+      </div><!-- Vote Results -->
+      <div class="card mb-8">
+       <h3 class="font-semibold text-gray-900 mb-4 text-sm uppercase text-text-secondary tracking-wide">Results Summary</h3>
+       <div class="space-y-3">
+        <div class="flex items-center justify-between"><span class="text-gray-700">Total Votes Cast:</span> <span class="font-semibold text-gray-900">6</span>
+        </div>
+        <div class="divider"></div>
+        <div class="flex items-center justify-between"><span class="text-gray-700">Votes for Player 2:</span> <span class="font-semibold text-red-600">3</span>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-gray-700">Votes for Player 4:</span> <span class="font-semibold text-red-600">2</span>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-gray-700">Split Vote:</span> <span class="font-semibold text-red-600">1</span>
+        </div>
+       </div>
+       <p class="text-text-secondary text-xs mt-4">Individual votes remain private. Only the outcome is visible.</p>
+      </div><!-- Private Feedback -->
+      <div class="card bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 mb-8">
+       <div class="flex items-start gap-3 mb-3">
+        <div class="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center flex-shrink-0">
+         <svg class="w-4 h-4 text-purple-700" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+         </svg>
+        </div>
+        <h3 class="font-semibold text-purple-900">Your Private Feedback</h3>
+       </div>
+       <div class="bg-white rounded-lg p-4 border border-purple-100 mb-3">
+        <p class="font-semibold text-gray-900 mb-1">Your vote was: Incorrect ✕</p>
+        <p class="text-text-secondary text-sm">You voted for Player 4, but the Saboteur was actually Player 3.</p>
+       </div>
+       <p class="text-purple-700 text-xs font-medium">Only you can see this feedback</p>
+      </div>
+     </div>
+    </div><!-- Footer -->
+    <div class="bg-white border-t border-gray-200 px-6 py-4 space-y-3"><button onclick="goToScreen('landing')" class="safe-btn w-full py-4 text-lg"> Play Again </button> <button class="unsafe-btn w-full py-3"> Share Results </button>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Default configuration
+    const defaultConfig = {
+      headline: 'Vote Together. Stay Private.',
+      description: 'Everyone votes in secret. The system decides the result fairly.',
+      question_text: 'Who do you think is the Saboteur?',
+      start_button: 'Start Voting',
+      vote_button: 'Cast My Vote'
+    };
+
+    // Screen management
+    function goToScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+      const targetScreen = document.getElementById(`screen-${screenId}`);
+      if (targetScreen) {
+        targetScreen.classList.add('active');
+      }
+    }
+
+    // Player selection
+    function selectPlayer(element) {
+      document.querySelectorAll('.card-player').forEach(card => {
+        card.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      const voteButton = document.getElementById('vote-button');
+      if (voteButton) {
+        voteButton.disabled = false;
+        voteButton.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    // Apply configuration to UI
+    async function onConfigChange(config) {
+      const headline = document.getElementById('headline');
+      const description = document.getElementById('description');
+      const questionText = document.getElementById('question-text');
+      const startButton = document.getElementById('start-button');
+      const voteButton = document.getElementById('vote-button');
+      
+      if (headline) headline.textContent = config.headline || defaultConfig.headline;
+      if (description) description.textContent = config.description || defaultConfig.description;
+      if (questionText) questionText.textContent = config.question_text || defaultConfig.question_text;
+      if (startButton) startButton.textContent = config.start_button || defaultConfig.start_button;
+      if (voteButton) voteButton.textContent = config.vote_button || defaultConfig.vote_button;
+    }
+
+    // Capabilities
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+
+    // Edit panel values
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['headline', config.headline || defaultConfig.headline],
+        ['description', config.description || defaultConfig.description],
+        ['question_text', config.question_text || defaultConfig.question_text],
+        ['start_button', config.start_button || defaultConfig.start_button],
+        ['vote_button', config.vote_button || defaultConfig.vote_button]
+      ]);
+    }
+
+    // Initialize SDK
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+      });
+    } else {
+      onConfigChange(defaultConfig);
+    }
+
+    // Simulate processing flow
+    function startProcessing() {
+      setTimeout(() => {
+        // Random result - either correct or incorrect
+        const isCorrect = Math.random() > 0.3;
+        goToScreen(isCorrect ? 'result' : 'wrong-result');
+      }, 3000);
+    }
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c7adb301229933e',t:'MTc3MDA0NzU1Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
