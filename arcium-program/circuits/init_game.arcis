@@ -1,0 +1,25 @@
+// init_game.arcis
+// Initializes encrypted vote counters for all players
+
+use arcium::prelude::*;
+
+#[computation]
+pub fn init_game(
+    nonce: Plaintext<u128>,
+    num_players: Plaintext<u8>,
+) -> EncryptedArray<u8, 8> {
+    // Initialize encrypted vote storage for up to 8 players
+    let mut votes = EncryptedArray::new();
+    
+    for i in 0..8 {
+        if i < num_players.value() {
+            // Initialize with null vote (encrypted 255)
+            votes[i] = Encrypted::new(255u8, nonce.value());
+        } else {
+            // Unused slots
+            votes[i] = Encrypted::new(0u8, nonce.value());
+        }
+    }
+    
+    votes
+}

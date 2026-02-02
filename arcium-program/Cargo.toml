@@ -1,16 +1,31 @@
 [package]
-name = "veil-voting-mpc"
+name = "veil"
 version = "0.1.0"
+description = "Veil - Hidden information voting game with Arcium MPC"
 edition = "2021"
-
-[dependencies]
-arcium-sdk = "0.2.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+name = "veil"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
 
 [profile.release]
-opt-level = 3
-lto = true
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.dev]
+overflow-checks = true

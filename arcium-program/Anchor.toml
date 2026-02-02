@@ -1,0 +1,37 @@
+[toolchain]
+anchor_version = "0.32.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+veil = "51JDkhaM8nWP3NEEtDAs28WKZH8bM5Wr6YGVyuMxHfZu"
+
+[programs.localnet]
+veil = "51JDkhaM8nWP3NEEtDAs28WKZH8bM5Wr6YGVyuMxHfZu"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 10000
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+[[test.validator.clone]]
+address = "ArcH9wURBPKTSYL8qpTaGh6jbDJeUVTUhXJpsCCq8RWV"  # Arcium program
+
+[[test.validator.clone]]
+address = "ARCrXePKNMQHZQ7xCfjvRt5c27qTBMxmMSf8kVJgmP1r"  # Arcium cluster
+
+[[test.validator.clone]]
+address = "FeeP11111111111111111111111111111111111111"  # Fee pool

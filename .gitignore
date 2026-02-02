@@ -1,1 +1,5 @@
-
+server/node_modules/
+arcium-program/target/
+arcium-program/.anchor/
+*.log
+.env

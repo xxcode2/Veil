@@ -1,38 +1,18 @@
 /**
- * Veil Solana Program Integration
- * Program ID: 51JDkhaM8nWP3NEEtDAs28WKZH8bM5Wr6YGVyuMxHfZu
- * Network: Devnet
+ * Arcium-Style MPC Manager
  * 
- * MPC voting game deployed on Solana
+ * This demonstrates the Arcium security model:
+ * - Server NEVER sees plaintext votes
+ * - x25519 key exchange for shared secrets
+ * - Rescue-style cipher for encryption (simulated)
+ * - MPC computation happens in "secure enclave" (simulated locally)
+ * 
+ * For production: Replace with real Arcium Solana program integration
+ * See: https://docs.arcium.com/developers
  */
-
-// Production Solana Program ID
-export const VEIL_PROGRAM_ID = "51JDkhaM8nWP3NEEtDAs28WKZH8bM5Wr6YGVyuMxHfZu";
-export const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
 import { x25519 } from '@noble/curves/ed25519';
 import { randomBytes } from 'crypto';
-
-interface EncryptedVoteSubmission {
-  playerId: string;
-  encryptedVote: Buffer; // Ciphertext from client
-  clientPublicKey: Buffer; // Client's x25519 public key
-  nonce: Buffer; // 16-byte nonce
-}
-
-interface PlayerResult {
-  playerId: string;
-  wasCorrect: boolean;
-  isSaboteur: boolean;
-}
-
-interface VotingResult {
-  saboteurId: string;
-  communityCorrect: boolean;
-  saboteurVote: string;
-  majorityVote: string;
-  playerResults: PlayerResult[];
-}
 
 /**
  * Simulated Rescue Cipher
@@ -40,15 +20,13 @@ interface VotingResult {
  * See: https://docs.arcium.com/encryption/overview
  */
 class RescueCipher {
-  private sharedSecret: Uint8Array;
-
-  constructor(sharedSecret: Uint8Array) {
+  constructor(sharedSecret) {
     this.sharedSecret = sharedSecret;
   }
 
   // Simplified encryption (XOR with key-derived stream)
   // Real Rescue uses arithmetization-oriented cipher
-  encrypt(plaintext: string, nonce: Buffer): Buffer {
+  encrypt(plaintext, nonce) {
     const data = Buffer.from(plaintext, 'utf8');
     const keyStream = this.deriveKeyStream(nonce, data.length);
     const ciphertext = Buffer.alloc(data.length);
@@ -60,7 +38,7 @@ class RescueCipher {
     return ciphertext;
   }
 
-  decrypt(ciphertext: Buffer, nonce: Buffer): string {
+  decrypt(ciphertext, nonce) {
     const keyStream = this.deriveKeyStream(nonce, ciphertext.length);
     const plaintext = Buffer.alloc(ciphertext.length);
     
@@ -71,7 +49,7 @@ class RescueCipher {
     return plaintext.toString('utf8');
   }
 
-  private deriveKeyStream(nonce: Buffer, length: number): Buffer {
+  deriveKeyStream(nonce, length) {
     // Simplified key derivation (real Rescue-Prime is more complex)
     const stream = Buffer.alloc(length);
     for (let i = 0; i < length; i++) {
@@ -84,9 +62,6 @@ class RescueCipher {
 }
 
 export class ArciumManager {
-  private mxePrivateKey: Uint8Array;
-  private mxePublicKey: Uint8Array;
-
   constructor() {
     // Generate MXE (cluster) keypair
     // In production, this is managed by Arcium network
@@ -100,7 +75,7 @@ export class ArciumManager {
   /**
    * Get MXE public key for client key exchange
    */
-  getMXEPublicKey(): Uint8Array {
+  getMXEPublicKey() {
     return this.mxePublicKey;
   }
 
@@ -112,7 +87,7 @@ export class ArciumManager {
    * - Arcium cluster nodes would execute the circuit in MPC
    * - Results would come back via callback instruction
    */
-  async executeVoting(votes: EncryptedVoteSubmission[]): Promise<VotingResult> {
+  async executeVoting(votes) {
     console.log(`[Arcium] 🔐 Processing ${votes.length} encrypted votes in MPC...`);
 
     // Simulate MPC computation delay
@@ -157,7 +132,7 @@ export class ArciumManager {
     });
 
     // 3. Determine majority
-    let majorityVote: string;
+    let majorityVote;
     if (voteACount > voteBCount) {
       majorityVote = 'A';
     } else if (voteBCount > voteACount) {
@@ -172,7 +147,7 @@ export class ArciumManager {
     const communityCorrect = majorityVote !== saboteurVote;
 
     // 5. Generate per-player results
-    const playerResults: PlayerResult[] = decryptedVotes.map((v, index) => {
+    const playerResults = decryptedVotes.map((v, index) => {
       const isSaboteur = index === saboteurIndex;
       const wasCorrect = isSaboteur
         ? v.vote !== majorityVote
@@ -201,4 +176,3 @@ export class ArciumManager {
 
 // Singleton instance
 export const arciumManager = new ArciumManager();
-

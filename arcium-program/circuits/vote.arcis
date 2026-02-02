@@ -1,0 +1,28 @@
+// vote.arcis
+// Processes encrypted vote submission
+
+use arcium::prelude::*;
+
+#[computation]
+pub fn vote(
+    voter_pubkey: X25519PublicKey,
+    vote_nonce: Plaintext<u128>,
+    encrypted_vote: Encrypted<bool>, // true = SAFE, false = UNSAFE
+    game_nonce: Plaintext<u128>,
+    player_index: Plaintext<u8>,
+    vote_state: EncryptedAccountData, // Read current votes
+) -> EncryptedArray<u8, 8> {
+    // Decrypt vote using shared secret
+    let vote_value = encrypted_vote.decrypt(voter_pubkey, vote_nonce.value());
+    
+    // Convert bool to u8: true (SAFE) = 1, false (UNSAFE) = 0
+    let vote_byte = if vote_value { 1u8 } else { 0u8 };
+    
+    // Read existing vote state
+    let mut votes = vote_state.read_array::<u8, 8>();
+    
+    // Store this player's vote
+    votes[player_index.value() as usize] = Encrypted::new(vote_byte, game_nonce.value());
+    
+    votes
+}
