@@ -3,6 +3,10 @@
   "name": "veil-game",
   "builds": [
     {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
       "src": "index-rooms.html",
       "use": "@vercel/static"
     },

@@ -1,0 +1,9 @@
+{
+  "name": "veil-frontend",
+  "version": "1.0.0",
+  "description": "Veil - Private voting game frontend",
+  "scripts": {
+    "build": "echo 'No build step required for static site'",
+    "dev": "python3 -m http.server 8000"
+  }
+}
