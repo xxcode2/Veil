@@ -558,96 +558,188 @@
    </div>
   </div>
   <script>
-    // Default configuration
-    const defaultConfig = {
-      headline: 'Vote Together. Stay Private.',
-      description: 'Everyone votes in secret. The system decides the result fairly.',
-      question_text: 'Who do you think is the Saboteur?',
-      start_button: 'Start Voting',
-      vote_button: 'Cast My Vote'
-    };
+/* ===============================
+   CONFIG & STATE
+================================ */
+const WS_URL = "ws://localhost:3001"; // ganti saat deploy
+let ws = null;
 
-    // Screen management
-    function goToScreen(screenId) {
-      document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
-      });
-      const targetScreen = document.getElementById(`screen-${screenId}`);
-      if (targetScreen) {
-        targetScreen.classList.add('active');
+let selectedTargetId = null;
+let hasVoted = false;
+
+/* ===============================
+   SCREEN MANAGEMENT
+================================ */
+function goToScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(screen => {
+    screen.classList.remove('active');
+  });
+  const target = document.getElementById(`screen-${screenId}`);
+  if (target) target.classList.add('active');
+}
+
+/* ===============================
+   WEBSOCKET CONNECTION
+================================ */
+function connectServer() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    console.log("🟢 Connected to server");
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    console.log("📩 Server:", msg);
+
+    // server minta pindah ke voting
+    if (msg.type === "PHASE" && msg.phase === "voting") {
+      goToScreen("voting");
+    }
+
+    // hasil voting
+    if (msg.type === "RESULT") {
+      if (msg.communityCorrect) {
+        goToScreen("result");
+      } else {
+        goToScreen("wrong-result");
       }
     }
+  };
 
-    // Player selection
-    function selectPlayer(element) {
-      document.querySelectorAll('.card-player').forEach(card => {
-        card.classList.remove('selected');
-      });
-      element.classList.add('selected');
-      
-      const voteButton = document.getElementById('vote-button');
-      if (voteButton) {
-        voteButton.disabled = false;
-        voteButton.classList.remove('opacity-50', 'cursor-not-allowed');
-      }
-    }
+  ws.onclose = () => {
+    console.warn("🔴 Disconnected from server");
+  };
+}
 
-    // Apply configuration to UI
-    async function onConfigChange(config) {
-      const headline = document.getElementById('headline');
-      const description = document.getElementById('description');
-      const questionText = document.getElementById('question-text');
-      const startButton = document.getElementById('start-button');
-      const voteButton = document.getElementById('vote-button');
-      
-      if (headline) headline.textContent = config.headline || defaultConfig.headline;
-      if (description) description.textContent = config.description || defaultConfig.description;
-      if (questionText) questionText.textContent = config.question_text || defaultConfig.question_text;
-      if (startButton) startButton.textContent = config.start_button || defaultConfig.start_button;
-      if (voteButton) voteButton.textContent = config.vote_button || defaultConfig.vote_button;
-    }
+/* ===============================
+   GAME ACTIONS
+================================ */
 
-    // Capabilities
-    function mapToCapabilities(config) {
-      return {
-        recolorables: [],
-        borderables: [],
-        fontEditable: undefined,
-        fontSizeable: undefined
-      };
-    }
+// dipanggil saat klik "Start Voting" di landing
+function startVotingFlow() {
+  goToScreen("lobby");
 
-    // Edit panel values
-    function mapToEditPanelValues(config) {
-      return new Map([
-        ['headline', config.headline || defaultConfig.headline],
-        ['description', config.description || defaultConfig.description],
-        ['question_text', config.question_text || defaultConfig.question_text],
-        ['start_button', config.start_button || defaultConfig.start_button],
-        ['vote_button', config.vote_button || defaultConfig.vote_button]
-      ]);
-    }
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    connectServer();
+  }
+}
 
-    // Initialize SDK
-    if (window.elementSdk) {
-      window.elementSdk.init({
-        defaultConfig,
-        onConfigChange,
-        mapToCapabilities,
-        mapToEditPanelValues
-      });
-    } else {
-      onConfigChange(defaultConfig);
-    }
+// dipanggil saat klik "Start Vote" di lobby
+function startVote() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-    // Simulate processing flow
-    function startProcessing() {
-      setTimeout(() => {
-        // Random result - either correct or incorrect
-        const isCorrect = Math.random() > 0.3;
-        goToScreen(isCorrect ? 'result' : 'wrong-result');
-      }, 3000);
-    }
-  </script>
+  ws.send(JSON.stringify({
+    type: "START_VOTE"
+  }));
+}
+
+// pilih player
+function selectPlayer(element) {
+  document.querySelectorAll('.card-player').forEach(card => {
+    card.classList.remove('selected');
+  });
+
+  element.classList.add('selected');
+
+  selectedTargetId = element.dataset.playerId || element.innerText;
+  
+  const voteButton = document.getElementById("vote-button");
+  voteButton.disabled = false;
+  voteButton.classList.remove("opacity-50", "cursor-not-allowed");
+}
+
+// submit vote
+function submitVote() {
+  if (!selectedTargetId || hasVoted) return;
+
+  hasVoted = true;
+  goToScreen("processing");
+
+  ws.send(JSON.stringify({
+    type: "VOTE",
+    targetId: selectedTargetId
+  }));
+}
+
+/* ===============================
+   DEFAULT UI CONFIG (CANVA SDK)
+================================ */
+const defaultConfig = {
+  headline: 'Vote Together. Stay Private.',
+  description: 'Everyone votes in secret. The system decides the result fairly.',
+  question_text: 'Who do you think is the Saboteur?',
+  start_button: 'Start Voting',
+  vote_button: 'Cast My Vote'
+};
+
+async function onConfigChange(config) {
+  const headline = document.getElementById('headline');
+  const description = document.getElementById('description');
+  const questionText = document.getElementById('question-text');
+  const startButton = document.getElementById('start-button');
+  const voteButton = document.getElementById('vote-button');
+
+  if (headline) headline.textContent = config.headline || defaultConfig.headline;
+  if (description) description.textContent = config.description || defaultConfig.description;
+  if (questionText) questionText.textContent = config.question_text || defaultConfig.question_text;
+  if (startButton) startButton.textContent = config.start_button || defaultConfig.start_button;
+  if (voteButton) voteButton.textContent = config.vote_button || defaultConfig.vote_button;
+}
+
+function mapToCapabilities(config) {
+  return {
+    recolorables: [],
+    borderables: [],
+    fontEditable: undefined,
+    fontSizeable: undefined
+  };
+}
+
+function mapToEditPanelValues(config) {
+  return new Map([
+    ['headline', config.headline || defaultConfig.headline],
+    ['description', config.description || defaultConfig.description],
+    ['question_text', config.question_text || defaultConfig.question_text],
+    ['start_button', config.start_button || defaultConfig.start_button],
+    ['vote_button', config.vote_button || defaultConfig.vote_button]
+  ]);
+}
+
+// init Canva SDK
+if (window.elementSdk) {
+  window.elementSdk.init({
+    defaultConfig,
+    onConfigChange,
+    mapToCapabilities,
+    mapToEditPanelValues
+  });
+} else {
+  onConfigChange(defaultConfig);
+}
+
+/* ===============================
+   BUTTON HOOKS (IMPORTANT)
+================================ */
+
+// Landing button
+const startBtn = document.getElementById("start-button");
+if (startBtn) {
+  startBtn.onclick = startVotingFlow;
+}
+
+// Lobby start vote button
+document.querySelectorAll("button").forEach(btn => {
+  if (btn.textContent.trim() === "Start Vote") {
+    btn.onclick = startVote;
+  }
+});
+
+// Voting submit button
+const voteBtn = document.getElementById("vote-button");
+if (voteBtn) {
+  voteBtn.onclick = submitVote;
+}
+</script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c7adb301229933e',t:'MTc3MDA0NzU1Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
