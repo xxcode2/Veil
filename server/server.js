@@ -17,7 +17,9 @@ const WS_PORT = process.env.WS_PORT || (process.env.PORT ? parseInt(process.env.
 const ALLOWED_ORIGINS = [
   'http://localhost:8000',
   'http://127.0.0.1:8000',
-  process.env.FRONTEND_URL || 'http://localhost:8000'
+  'https://veil-liard.vercel.app',
+  'https://veil-game.vercel.app',
+  process.env.FRONTEND_URL
 ].filter(Boolean);
 
 const roomManager = new RoomManager();

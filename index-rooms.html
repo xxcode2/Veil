@@ -199,12 +199,15 @@ let clientKeyPair = null;
 // Auto-detect environment and configure URLs
 const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
+// Railway backend URL (update this after Railway deployment)
+const RAILWAY_BACKEND = 'https://veil-production.up.railway.app'; // UPDATE THIS!
+
 const HTTP_API = isProduction 
-  ? (window.VEIL_BACKEND_URL || 'https://your-backend.up.railway.app')
+  ? (window.VEIL_BACKEND_URL || RAILWAY_BACKEND)
   : 'http://localhost:3000';
 
 const WS_URL = isProduction
-  ? (window.VEIL_WS_URL || 'wss://your-backend.up.railway.app')
+  ? (window.VEIL_WS_URL || RAILWAY_BACKEND.replace('https://', 'wss://'))
   : 'ws://localhost:3001';
 
 // Log configuration
