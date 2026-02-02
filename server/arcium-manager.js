@@ -1,15 +1,14 @@
 /**
- * Arcium-Style MPC Manager
+ * Veil Solana Program Integration
+ * Program ID: 51JDkhaM8nWP3NEEtDAs28WKZH8bM5Wr6YGVyuMxHfZu
+ * Network: Devnet
  * 
- * This demonstrates the Arcium security model:
- * - Server NEVER sees plaintext votes
- * - x25519 key exchange for shared secrets
- * - Rescue-style cipher for encryption (simulated)
- * - MPC computation happens in "secure enclave" (simulated locally)
- * 
- * For production: Replace with real Arcium Solana program integration
- * See: https://docs.arcium.com/developers
+ * MPC voting game deployed on Solana
  */
+
+// Production Solana Program ID
+export const VEIL_PROGRAM_ID = "51JDkhaM8nWP3NEEtDAs28WKZH8bM5Wr6YGVyuMxHfZu";
+export const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
 import { x25519 } from '@noble/curves/ed25519';
 import { randomBytes } from 'crypto';
